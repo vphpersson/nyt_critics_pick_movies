@@ -6,3 +6,9 @@
 !/go.sum
 !/Makefile
 !/service.go
+
+!/cmd
+!/pkg
+
+!/cmd/**/*
+!/pkg/**/*
