@@ -102,7 +102,7 @@ func run(ctx context.Context) error {
 }
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
 	if err := run(context.Background()); err != nil {
 		slog.Error("Run failed.", "error", err.Error())
