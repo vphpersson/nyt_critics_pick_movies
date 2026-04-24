@@ -12,7 +12,10 @@ import (
 
 	motmedelEnv "github.com/Motmedel/utils_go/pkg/env"
 	"github.com/Motmedel/utils_go/pkg/http/types/fetch_config"
+	httpContextExtractor "github.com/Motmedel/utils_go/pkg/http/types/http_context_extractor"
 	motmedelHttpUtils "github.com/Motmedel/utils_go/pkg/http/utils"
+	motmedelLog "github.com/Motmedel/utils_go/pkg/log"
+	errorLogger "github.com/Motmedel/utils_go/pkg/log/error_logger"
 	letterboxdTypes "github.com/vphpersson/letterboxd_list_updater/api/types"
 	"github.com/vphpersson/letterboxd_list_updater/api/types/endpoint/update_list_endpoint"
 	letterboxdUtils "github.com/vphpersson/letterboxd_list_updater/api/utils"
@@ -102,10 +105,15 @@ func run(ctx context.Context) error {
 }
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	logger := errorLogger.NewWithErrorContextExtractor(
+		slog.NewJSONHandler(os.Stdout, nil),
+		&motmedelLog.ErrorContextExtractor{
+			ContextExtractors: []motmedelLog.ContextExtractor{httpContextExtractor.New()},
+		},
+	)
+	slog.SetDefault(logger.Logger)
 
 	if err := run(context.Background()); err != nil {
-		slog.Error("Run failed.", "error", err.Error())
-		os.Exit(1)
+		logger.Fatal("Run failed.", err)
 	}
 }
