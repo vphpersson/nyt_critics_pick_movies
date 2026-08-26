@@ -1,6 +1,6 @@
 module github.com/vphpersson/nyt_critics_pick_movies
 
-go 1.26
+go 1.27
 
 require github.com/Motmedel/utils_go v0.0.467
 
