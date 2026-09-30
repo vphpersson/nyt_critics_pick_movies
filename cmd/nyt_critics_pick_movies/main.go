@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 
+	motmedelErrorLogger "github.com/Motmedel/utils_go/pkg/log/error_logger"
+
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/nyt_critics_pick_movies"
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/nyt_critics_pick_movies/fetch_reviews_config"
 )
@@ -49,10 +51,10 @@ func run(ctx context.Context) error {
 }
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
+	logger := motmedelErrorLogger.New(slog.NewJSONHandler(os.Stderr, nil))
+	slog.SetDefault(logger.Logger)
 
 	if err := run(context.Background()); err != nil {
-		slog.Error("Run failed.", "error", err.Error())
-		os.Exit(1)
+		logger.Fatal("Run failed.", err)
 	}
 }
