@@ -6,9 +6,12 @@
 !/go.sum
 !/Makefile
 !/service.go
+!/*_test.go
 
 !/cmd
 !/pkg
 
 !/cmd/**/*
 !/pkg/**/*
+
+/cmd/nyt_critics_pick_movies/nyt_critics_pick_movies

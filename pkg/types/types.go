@@ -22,11 +22,18 @@ type Edge struct {
 	Node Node `json:"node"`
 }
 
+// PageInfo is where a page of results ends, and whether more follow.
+type PageInfo struct {
+	HasNextPage bool   `json:"hasNextPage"`
+	EndCursor   string `json:"endCursor"`
+}
+
 type GraphQLResponse struct {
 	Data struct {
 		ContentSearch struct {
 			Hits struct {
-				Edges []Edge `json:"edges"`
+				Edges    []Edge    `json:"edges"`
+				PageInfo *PageInfo `json:"pageInfo"`
 			} `json:"hits"`
 		} `json:"contentSearch"`
 	} `json:"data"`

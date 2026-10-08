@@ -24,6 +24,20 @@ import (
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/types"
 )
 
+// fetchOptions are the fetch's options: LIMIT reviews read, and with SINCE
+// set (YYYY-MM-DD or RFC 3339) none published before it.
+func fetchOptions(limit int) ([]fetch_reviews_config.Option, error) {
+	options := []fetch_reviews_config.Option{fetch_reviews_config.WithLimit(limit)}
+	if value := os.Getenv("SINCE"); value != "" {
+		since, err := fetch_reviews_config.ParseSince(value)
+		if err != nil {
+			return nil, fmt.Errorf("parse since: %w", err)
+		}
+		options = append(options, fetch_reviews_config.WithSince(since))
+	}
+	return options, nil
+}
+
 func readIntEnv(name string, fallback int) (int, error) {
 	value := os.Getenv(name)
 	if value == "" {
@@ -65,7 +79,12 @@ func run(ctx context.Context) error {
 	letterboxdDomain := motmedelEnv.GetEnvWithDefault("LETTERBOXD_DOMAIN", "letterboxd-list-updater.home.arpa")
 	listName := motmedelEnv.GetEnvWithDefault("LETTERBOXD_LIST", "vph/collected")
 
-	nytEntry, err := nyt_critics_pick_movies.FetchReviews(ctx, fetch_reviews_config.WithLimit(limit))
+	options, err := fetchOptions(limit)
+	if err != nil {
+		return err
+	}
+
+	nytEntry, err := nyt_critics_pick_movies.FetchReviews(ctx, options...)
 	if err != nil {
 		return fmt.Errorf("fetch reviews: %w", err)
 	}
