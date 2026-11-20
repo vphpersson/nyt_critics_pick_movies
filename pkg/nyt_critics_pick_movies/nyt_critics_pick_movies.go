@@ -18,13 +18,16 @@ import (
 )
 
 const (
-	GraphQLEndpoint    = "https://samizdat-graphql.nytimes.com/graphql/v2"
+	// GraphQLHost and GraphQLPath are where the reviews are asked for.
+	GraphQLHost        = "samizdat-graphql.nytimes.com"
+	GraphQLPath        = "/graphql/v2"
 	OperationName      = "MovieReviewsQuery"
 	PersistedQueryHash = "01cc23ab7df18d924f28da523768f46bedfb202f4dc2ca085f23b748f598ad2c"
 	NytAppType         = "project-vi"
 	NytAppVersion      = "0.0.5"
-	// Public token embedded in nytimes.com's JS bundle; required by the GraphQL gateway.
-	NytToken = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs+/oUCTBmD/cLdmcecrnBMHiU/pxQCn2DDyaPKUOXxi4p0uUSZQzsuq1pJ1m5z1i0YGPd1U1OeGHAChWtqoxC7bFMCXcwnE1oyui9G1uobgpm1GdhtwkR7ta7akVTcsF8zxiXx7DNXIPd2nIJFH83rmkZueKrC4JVaNzjvD+Z03piLn5bHWU6+w+rA+kyJtGgZNTXKyPh6EC6o5N+rknNMG5+CdTq35p8f99WjFawSvYgP9V64kgckbTbtdJ6YhVP58TnuYgr12urtwnIqWP9KSJ1e5vmgf3tunMqWNm6+AnsqNj8mCLdCuc5cEB74CwUeQcP2HQQmbCddBy2y0mEwIDAQAB"
+	// Public token embedded in nytimes.com's JS bundle; required by the GraphQL gateway. Every browser
+	// sends it: no secret, however much it looks like one.
+	NytToken = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs+/oUCTBmD/cLdmcecrnBMHiU/pxQCn2DDyaPKUOXxi4p0uUSZQzsuq1pJ1m5z1i0YGPd1U1OeGHAChWtqoxC7bFMCXcwnE1oyui9G1uobgpm1GdhtwkR7ta7akVTcsF8zxiXx7DNXIPd2nIJFH83rmkZueKrC4JVaNzjvD+Z03piLn5bHWU6+w+rA+kyJtGgZNTXKyPh6EC6o5N+rknNMG5+CdTq35p8f99WjFawSvYgP9V64kgckbTbtdJ6YhVP58TnuYgr12urtwnIqWP9KSJ1e5vmgf3tunMqWNm6+AnsqNj8mCLdCuc5cEB74CwUeQcP2HQQmbCddBy2y0mEwIDAQAB" //nolint:gosec // G101: the public token every browser sends, as said above.
 )
 
 var imdbIDPattern = regexp.MustCompile(`/title/(tt\d+)`)
@@ -116,7 +119,7 @@ func fetchPage(ctx context.Context, config *fetch_reviews_config.Config, first i
 
 	_, parsed, err := altshiftHttpUtils.FetchJson[*types.GraphQLResponse](
 		ctx,
-		GraphQLEndpoint+"?"+params.Encode(),
+		new(url.URL{Scheme: "https", Host: GraphQLHost, Path: GraphQLPath, RawQuery: params.Encode()}).String(),
 		fetchOptions...,
 	)
 	if err != nil {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -28,6 +29,8 @@ func fetchOptions(limit int) ([]fetch_reviews_config.Option, error) {
 	return options, nil
 }
 
+var errInvalidEnv = errors.New("invalid environment value")
+
 func readIntEnv(name string, fallback int) (int, error) {
 	value := os.Getenv(name)
 	if value == "" {
@@ -35,7 +38,7 @@ func readIntEnv(name string, fallback int) (int, error) {
 	}
 	parsed, err := strconv.Atoi(value)
 	if err != nil || parsed <= 0 {
-		return 0, fmt.Errorf("invalid %s: %q", name, value)
+		return 0, fmt.Errorf("%w: %s=%q", errInvalidEnv, name, value)
 	}
 	return parsed, nil
 }
