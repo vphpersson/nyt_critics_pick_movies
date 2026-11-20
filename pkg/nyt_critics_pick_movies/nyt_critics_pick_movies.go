@@ -9,10 +9,10 @@ import (
 	"regexp"
 	"time"
 
-	motmedelErrors "github.com/Motmedel/utils_go/pkg/errors"
-	"github.com/Motmedel/utils_go/pkg/errors/types/nil_error"
-	"github.com/Motmedel/utils_go/pkg/http/types/fetch_config"
-	motmedelHttpUtils "github.com/Motmedel/utils_go/pkg/http/utils"
+	altshiftErrors "github.com/altshiftab/utils_go/pkg/errors"
+	"github.com/altshiftab/utils_go/pkg/errors/types/nil_error"
+	"github.com/altshiftab/utils_go/pkg/http/types/fetch_config"
+	altshiftHttpUtils "github.com/altshiftab/utils_go/pkg/http/utils"
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/nyt_critics_pick_movies/fetch_reviews_config"
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/types"
 )
@@ -83,7 +83,7 @@ func fetchPage(ctx context.Context, config *fetch_reviews_config.Config, first i
 	}
 	variablesJson, err := json.Marshal(variables)
 	if err != nil {
-		return nil, motmedelErrors.NewWithTrace(fmt.Errorf("json marshal: %w", err), variables)
+		return nil, altshiftErrors.NewWithTrace(fmt.Errorf("json marshal: %w", err), variables)
 	}
 
 	extensions, err := json.Marshal(map[string]any{
@@ -93,7 +93,7 @@ func fetchPage(ctx context.Context, config *fetch_reviews_config.Config, first i
 		},
 	})
 	if err != nil {
-		return nil, motmedelErrors.NewWithTrace(fmt.Errorf("json marshal: %w", err))
+		return nil, altshiftErrors.NewWithTrace(fmt.Errorf("json marshal: %w", err))
 	}
 
 	params := url.Values{}
@@ -114,7 +114,7 @@ func fetchPage(ctx context.Context, config *fetch_reviews_config.Config, first i
 		fetchOptions = append(fetchOptions, fetch_config.WithHttpClient(config.HttpClient))
 	}
 
-	_, parsed, err := motmedelHttpUtils.FetchJson[*types.GraphQLResponse](
+	_, parsed, err := altshiftHttpUtils.FetchJson[*types.GraphQLResponse](
 		ctx,
 		GraphQLEndpoint+"?"+params.Encode(),
 		fetchOptions...,
@@ -123,10 +123,10 @@ func fetchPage(ctx context.Context, config *fetch_reviews_config.Config, first i
 		return nil, fmt.Errorf("fetch json: %w", err)
 	}
 	if parsed == nil {
-		return nil, motmedelErrors.NewWithTrace(nil_error.New("graphql response"))
+		return nil, altshiftErrors.NewWithTrace(nil_error.New("graphql response"))
 	}
 	if len(parsed.Errors) > 0 {
-		return nil, motmedelErrors.NewWithTrace(fmt.Errorf("%w: %s", ErrGraphQL, parsed.Errors[0].Message), variables)
+		return nil, altshiftErrors.NewWithTrace(fmt.Errorf("%w: %s", ErrGraphQL, parsed.Errors[0].Message), variables)
 	}
 
 	return parsed, nil

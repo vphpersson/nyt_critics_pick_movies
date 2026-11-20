@@ -8,7 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	motmedelErrorLogger "github.com/Motmedel/utils_go/pkg/log/error_logger"
+	altshiftErrorLogger "github.com/altshiftab/utils_go/pkg/log/error_logger"
 
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/nyt_critics_pick_movies"
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/nyt_critics_pick_movies/fetch_reviews_config"
@@ -70,7 +70,7 @@ func run(ctx context.Context) error {
 }
 
 func main() {
-	logger := motmedelErrorLogger.New(slog.NewJSONHandler(os.Stderr, nil))
+	logger := altshiftErrorLogger.New(slog.NewJSONHandler(os.Stderr, nil))
 	slog.SetDefault(logger.Logger)
 
 	if err := run(context.Background()); err != nil {

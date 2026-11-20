@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	motmedelErrors "github.com/Motmedel/utils_go/pkg/errors"
+	altshiftErrors "github.com/altshiftab/utils_go/pkg/errors"
 )
 
 const (
@@ -67,8 +67,8 @@ func ParseSince(value string) (time.Time, error) {
 	}
 	since, err := time.Parse(time.RFC3339, value)
 	if err != nil {
-		return time.Time{}, motmedelErrors.NewWithTrace(
-			fmt.Errorf("%w: time parse: %w", motmedelErrors.ErrParseError, err),
+		return time.Time{}, altshiftErrors.NewWithTrace(
+			fmt.Errorf("%w: time parse: %w", altshiftErrors.ErrParseError, err),
 			value,
 		)
 	}

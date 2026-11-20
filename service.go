@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"strings"
 
-	motmedelEnv "github.com/Motmedel/utils_go/pkg/env"
-	"github.com/Motmedel/utils_go/pkg/http/types/fetch_config"
-	httpContextExtractor "github.com/Motmedel/utils_go/pkg/http/types/http_context_extractor"
-	motmedelHttpUtils "github.com/Motmedel/utils_go/pkg/http/utils"
-	motmedelLog "github.com/Motmedel/utils_go/pkg/log"
-	errorLogger "github.com/Motmedel/utils_go/pkg/log/error_logger"
+	altshiftEnv "github.com/altshiftab/utils_go/pkg/env"
+	"github.com/altshiftab/utils_go/pkg/http/types/fetch_config"
+	httpContextExtractor "github.com/altshiftab/utils_go/pkg/http/types/http_context_extractor"
+	altshiftHttpUtils "github.com/altshiftab/utils_go/pkg/http/utils"
+	altshiftLog "github.com/altshiftab/utils_go/pkg/log"
+	errorLogger "github.com/altshiftab/utils_go/pkg/log/error_logger"
 	letterboxdTypes "github.com/vphpersson/letterboxd_list_updater/api/types"
 	"github.com/vphpersson/letterboxd_list_updater/api/types/endpoint/update_list_endpoint"
 	letterboxdUtils "github.com/vphpersson/letterboxd_list_updater/api/utils"
@@ -76,8 +76,8 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	letterboxdDomain := motmedelEnv.GetEnvWithDefault("LETTERBOXD_DOMAIN", "letterboxd-list-updater.home.arpa")
-	listName := motmedelEnv.GetEnvWithDefault("LETTERBOXD_LIST", "vph/collected")
+	letterboxdDomain := altshiftEnv.GetEnvWithDefault("LETTERBOXD_DOMAIN", "letterboxd-list-updater.home.arpa")
+	listName := altshiftEnv.GetEnvWithDefault("LETTERBOXD_LIST", "vph/collected")
 
 	options, err := fetchOptions(limit)
 	if err != nil {
@@ -101,7 +101,7 @@ func run(ctx context.Context) error {
 		entries = append(entries, eventToImportEntry(event))
 	}
 
-	response, _, err := motmedelHttpUtils.FetchJsonWithBody[any](
+	response, _, err := altshiftHttpUtils.FetchJsonWithBody[any](
 		ctx,
 		new(url.URL{Scheme: "https", Host: letterboxdDomain, Path: update_list_endpoint.DefaultPath}).String(),
 		letterboxdTypes.UpdateList{
@@ -126,8 +126,8 @@ func run(ctx context.Context) error {
 func main() {
 	logger := errorLogger.NewWithErrorContextExtractor(
 		slog.NewJSONHandler(os.Stdout, nil),
-		&motmedelLog.ErrorContextExtractor{
-			ContextExtractors: []motmedelLog.ContextExtractor{httpContextExtractor.New()},
+		&altshiftLog.ErrorContextExtractor{
+			ContextExtractors: []altshiftLog.ContextExtractor{httpContextExtractor.New()},
 		},
 	)
 	slog.SetDefault(logger.Logger)

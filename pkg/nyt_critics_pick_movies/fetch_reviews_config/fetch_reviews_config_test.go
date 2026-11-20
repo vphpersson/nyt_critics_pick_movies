@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	motmedelErrors "github.com/Motmedel/utils_go/pkg/errors"
+	altshiftErrors "github.com/altshiftab/utils_go/pkg/errors"
 )
 
 func TestParseSince(t *testing.T) {
@@ -30,7 +30,7 @@ func TestParseSince(t *testing.T) {
 
 			since, err := ParseSince(testCase.value)
 			if testCase.wantErr {
-				if !errors.Is(err, motmedelErrors.ErrParseError) {
+				if !errors.Is(err, altshiftErrors.ErrParseError) {
 					t.Fatalf("expected a parse error, got %v", err)
 				}
 				return
