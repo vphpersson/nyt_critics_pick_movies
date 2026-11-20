@@ -28,5 +28,9 @@ GroupAdd=keep-groups
 Volume=%h/.config/tpm-signer/vvvp-films-feeder.tpm:/etc/tpm-signer/key.tpm:ro
 
 [Service]
+# The container's output reaches the journal through LogDriver=journald; this keeps it from reaching it
+# twice, through the unit's own output too.
+StandardOutput=null
+StandardError=null
 Type=oneshot
 TimeoutStartSec=15min
