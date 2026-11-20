@@ -1,0 +1,32 @@
+[Unit]
+Description=NYT Critic's Picks → films.vvvp.se's New York Times Critic's Picks
+After=network-online.target container_image_registry.service
+Wants=network-online.target
+
+# Reads the New York Times' newest Critic's Picks and feeds them to the
+# films service, which puts the films its list lacks at its top. Started by
+# nyt_critics_pick_movies.timer; it has no [Install] of its own.
+
+[Container]
+Image=localhost:5000/nyt_critics_pick_movies:latest
+AutoUpdate=registry
+LogDriver=journald
+
+# Container UID 0 is host UID 1000 under rootless podman, which is what owns the
+# key. Numeric because the image is built FROM scratch and has no passwd file.
+User=0:0
+
+# The API key's private half lives inside this machine's TPM and cannot be taken
+# out of it: what is mounted is the wrapped blob, inert anywhere else. It has no
+# PIN, as nothing can answer a prompt at night; its public half is registered
+# with login.vvvp.se as vvvp-films-feeder, which mints the job a session good for
+# the feeding of a list and the refresh, nothing else. keep-groups carries this
+# user's membership of the tss group, which the resource manager's device is
+# reachable by.
+AddDevice=/dev/tpmrm0
+GroupAdd=keep-groups
+Volume=%h/.config/tpm-signer/vvvp-films-feeder.tpm:/etc/tpm-signer/key.tpm:ro
+
+[Service]
+Type=oneshot
+TimeoutStartSec=15min

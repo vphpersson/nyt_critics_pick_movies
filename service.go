@@ -2,27 +2,30 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/altshiftab/authentication_go/pkg/api_key/client"
 	altshiftEnv "github.com/altshiftab/utils_go/pkg/env"
-	"github.com/altshiftab/utils_go/pkg/http/types/fetch_config"
 	httpContextExtractor "github.com/altshiftab/utils_go/pkg/http/types/http_context_extractor"
-	altshiftHttpUtils "github.com/altshiftab/utils_go/pkg/http/utils"
 	altshiftLog "github.com/altshiftab/utils_go/pkg/log"
 	errorLogger "github.com/altshiftab/utils_go/pkg/log/error_logger"
-	letterboxdTypes "github.com/vphpersson/letterboxd_list_updater/api/types"
-	"github.com/vphpersson/letterboxd_list_updater/api/types/endpoint/update_list_endpoint"
-	letterboxdUtils "github.com/vphpersson/letterboxd_list_updater/api/utils"
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/nyt_critics_pick_movies"
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/nyt_critics_pick_movies/fetch_reviews_config"
 	"github.com/vphpersson/nyt_critics_pick_movies/pkg/types"
+	"github.com/vphpersson/tpm_signer/pkg/keyfile"
+	"github.com/vphpersson/tpm_signer/pkg/signer"
 )
+
+var errInvalidEnv = errors.New("invalid environment value")
 
 // fetchOptions are the fetch's options: LIMIT reviews read, and with SINCE
 // set (YYYY-MM-DD or RFC 3339) none published before it.
@@ -45,29 +48,78 @@ func readIntEnv(name string, fallback int) (int, error) {
 	}
 	parsed, err := strconv.Atoi(value)
 	if err != nil || parsed <= 0 {
-		return 0, fmt.Errorf("invalid %s: %q", name, value)
+		return 0, fmt.Errorf("%w: %s=%q", errInvalidEnv, name, value)
 	}
 	return parsed, nil
 }
 
-func eventToImportEntry(event *types.Entry) *letterboxdTypes.ImportEntry {
-	if event == nil {
-		return nil
+func readBoolEnv(name string) (bool, error) {
+	value := os.Getenv(name)
+	if value == "" {
+		return false, nil
 	}
-
-	review := "# NYT\n\n" + event.ReviewLeadParagraph + "\n\n" + event.ReviewLink
-
-	entry := &letterboxdTypes.ImportEntry{Review: review}
-
-	if event.IMDBID != nil && *event.IMDBID != "" {
-		entry.ImdbID = *event.IMDBID
-		return entry
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("%w: %s=%q", errInvalidEnv, name, value)
 	}
+	return parsed, nil
+}
 
-	entry.Title = event.Title
-	entry.Directors = strings.Join(event.Directors, ", ")
+// toPicks are the critics' picks as the films service takes them, the newest first: each review's day,
+// the film's title, its IMDb id if the review gives one, its directors, and the review's summary.
+func toPicks(entries []*types.Entry) []*filmsPick {
+	var picks []*filmsPick
+	for _, entry := range entries {
+		if entry == nil || entry.ReviewLink == "" || len(entry.ReviewPublishDate) < len("2006-01-02") {
+			continue
+		}
+		pick := &filmsPick{
+			Url: entry.ReviewLink, Published: entry.ReviewPublishDate[:len("2006-01-02")], Title: entry.Title, Directors: entry.Directors,
+			Summary: entry.ReviewLeadParagraph,
+		}
+		if entry.IMDBID != nil {
+			pick.ImdbId = *entry.IMDBID
+		}
+		picks = append(picks, pick)
+	}
+	slices.SortStableFunc(picks, func(a *filmsPick, b *filmsPick) int { return strings.Compare(b.Published, a.Published) })
+	return picks
+}
 
-	return entry
+// signIn is the source of sessions the job's API key mints, the key inside the TPM.
+func signIn(keyFile string, tpmDevice string, loginUrl *url.URL) (tokens, error) {
+	keyData, err := os.ReadFile(keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("read key file: %w", err)
+	}
+	key, err := keyfile.Parse(keyData)
+	if err != nil {
+		return nil, fmt.Errorf("keyfile parse: %w", err)
+	}
+	tpmSigner, err := signer.New(key, tpmDevice, nil)
+	if err != nil {
+		return nil, fmt.Errorf("signer new: %w", err)
+	}
+	return &client.Source{Signer: tpmSigner, Service: loginUrl, HttpClient: &http.Client{Timeout: time.Minute}}, nil
+}
+
+// logFates says what became of each pick: what went on the list, what was left out and why.
+func logFates(ctx context.Context, fates []*pickFate) {
+	counts := map[string]int{}
+	for _, fate := range fates {
+		if fate == nil {
+			continue
+		}
+		counts[fate.Outcome]++
+		switch fate.Outcome {
+		case "unmatched":
+			slog.WarnContext(ctx, "A pick matched no film; left out.", "url", fate.Url, "reason", fate.Reason)
+		case "added":
+			slog.InfoContext(ctx, "A pick was added.", "url", fate.Url, "film", fate.Film, "title", fate.Title, "year", fate.Year, "by", fate.By)
+		}
+	}
+	slog.InfoContext(ctx, "Fed the picks.", "added", counts["added"], "listed", counts["listed"], "unmatched", counts["unmatched"],
+		"deferred", counts["deferred"])
 }
 
 func run(ctx context.Context) error {
@@ -75,51 +127,42 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	letterboxdDomain := altshiftEnv.GetEnvWithDefault("LETTERBOXD_DOMAIN", "letterboxd-list-updater.home.arpa")
-	listName := altshiftEnv.GetEnvWithDefault("LETTERBOXD_LIST", "vph/collected")
-
+	dryRun, err := readBoolEnv("DRY_RUN")
+	if err != nil {
+		return err
+	}
 	options, err := fetchOptions(limit)
 	if err != nil {
 		return err
 	}
+	filmsUrl, err := url.Parse(altshiftEnv.GetEnvWithDefault("FILMS_URL", "https://films.vvvp.se"))
+	if err != nil {
+		return fmt.Errorf("parse FILMS_URL: %w", err)
+	}
+	loginUrl, err := url.Parse(altshiftEnv.GetEnvWithDefault("LOGIN_URL", "https://login.vvvp.se"))
+	if err != nil {
+		return fmt.Errorf("parse LOGIN_URL: %w", err)
+	}
+	source, err := signIn(altshiftEnv.GetEnvWithDefault("KEY_FILE", "/etc/tpm-signer/key.tpm"), altshiftEnv.GetEnvWithDefault("TPM_DEVICE", "/dev/tpmrm0"), loginUrl)
+	if err != nil {
+		return err
+	}
 
-	nytEntry, err := nyt_critics_pick_movies.FetchReviews(ctx, options...)
+	entries, err := nyt_critics_pick_movies.FetchReviews(ctx, options...)
 	if err != nil {
 		return fmt.Errorf("fetch reviews: %w", err)
 	}
-
-	slog.InfoContext(ctx, "Fetched reviews.", "count", len(nytEntry), "limit", limit)
-
-	if len(nytEntry) == 0 {
-		slog.InfoContext(ctx, "No critics picks to submit.")
+	picks := toPicks(entries)
+	slog.InfoContext(ctx, "Fetched reviews.", "count", len(entries), "picks", len(picks), "limit", limit)
+	if len(picks) == 0 {
 		return nil
 	}
 
-	entries := make([]*letterboxdTypes.ImportEntry, 0, len(nytEntry))
-	for _, event := range nytEntry {
-		entries = append(entries, eventToImportEntry(event))
-	}
-
-	response, _, err := altshiftHttpUtils.FetchJsonWithBody[any](
-		ctx,
-		new(url.URL{Scheme: "https", Host: letterboxdDomain, Path: update_list_endpoint.DefaultPath}).String(),
-		letterboxdTypes.UpdateList{
-			List: listName,
-			Data: string(letterboxdUtils.ImportEntriesToCSV(entries)),
-		},
-		fetch_config.WithMethod(http.MethodPatch),
-	)
+	fates, err := feedAll(ctx, &http.Client{Timeout: 2 * time.Minute}, filmsUrl, source, "nyt", picks, dryRun)
+	logFates(ctx, fates)
 	if err != nil {
-		return fmt.Errorf("fetch json with body: %w", err)
+		return fmt.Errorf("feed all: %w", err)
 	}
-
-	slog.InfoContext(
-		ctx,
-		"Submitted critics picks.",
-		"count", len(entries),
-		"status", response.StatusCode,
-	)
 	return nil
 }
 

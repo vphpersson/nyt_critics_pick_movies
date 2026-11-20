@@ -2,4 +2,4 @@
 !/pkg
 !/go.mod
 !/go.sum
-!/service.go
+!/*.go

@@ -5,8 +5,10 @@
 !/go.mod
 !/go.sum
 !/Makefile
-!/service.go
-!/*_test.go
+!/*.go
+
+!/deploy
+!/deploy/**/*
 
 !/cmd
 !/pkg
