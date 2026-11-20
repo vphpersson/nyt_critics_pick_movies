@@ -112,14 +112,14 @@ func logFates(ctx context.Context, fates []*pickFate) {
 		}
 		counts[fate.Outcome]++
 		switch fate.Outcome {
-		case "unmatched":
-			slog.WarnContext(ctx, "A pick matched no film; left out.", "url", fate.Url, "reason", fate.Reason)
+		case "unmatched", "invalid":
+			slog.WarnContext(ctx, "A pick was "+fate.Outcome+"; left out.", "url", fate.Url, "reason", fate.Reason)
 		case "added":
 			slog.InfoContext(ctx, "A pick was added.", "url", fate.Url, "film", fate.Film, "title", fate.Title, "year", fate.Year, "by", fate.By)
 		}
 	}
 	slog.InfoContext(ctx, "Fed the picks.", "added", counts["added"], "listed", counts["listed"], "unmatched", counts["unmatched"],
-		"deferred", counts["deferred"])
+		"deferred", counts["deferred"], "invalid", counts["invalid"])
 }
 
 func run(ctx context.Context) error {
