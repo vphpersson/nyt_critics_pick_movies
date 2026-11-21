@@ -19,10 +19,10 @@ User=0:0
 # The API key's private half lives inside this machine's TPM and cannot be taken
 # out of it: what is mounted is the wrapped blob, inert anywhere else. It has no
 # PIN, as nothing can answer a prompt at night; its public half is registered
-# with login.vvvp.se as vvvp-films-feeder, which mints the job a session good for
-# the feeding of a list and the refresh, nothing else. keep-groups carries this
-# user's membership of the tss group, which the resource manager's device is
-# reachable by.
+# with login.vvvp.se as vvvp-films-feeder, which mints the job a session naming
+# that key, and films takes it for the feeding of a list and nothing else
+# (FEED_API_KEY_IDS). keep-groups carries this user's membership of the tss
+# group, which the resource manager's device is reachable by.
 AddDevice=/dev/tpmrm0
 GroupAdd=keep-groups
 Volume=%h/.config/tpm-signer/vvvp-films-feeder.tpm:/etc/tpm-signer/key.tpm:ro
