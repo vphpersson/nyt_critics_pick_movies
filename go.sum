@@ -1,5 +1,5 @@
-github.com/altshiftab/authentication_go v1.30.0 h1:WVKTg8Vtk5FDFYiCHF6v65HPPGlXN3XGedr72p7539Y=
-github.com/altshiftab/authentication_go v1.30.0/go.mod h1:SLtGo0XD2UeeONkA06DVj4Ju6Kaqx60VmXQ1XJJE74s=
+github.com/altshiftab/authentication_go v1.31.0 h1:JNYutiRmSASU7MxpLlXImyJGmbxNS7jbUCm6PdVOUaM=
+github.com/altshiftab/authentication_go v1.31.0/go.mod h1:9MN3LX4gpzh+7pYULXit1s9uNutIp9wPuY8qI+bQjzE=
 github.com/altshiftab/utils_go v1.120.0 h1:cfv6oYfTAD3mOmPySRFDZjAjRgyGUxT3XKNK1A2VIvI=
 github.com/altshiftab/utils_go v1.120.0/go.mod h1:lNBqVAWMIhIISNz0pOQnsqRsCPg6S50Q62GH6slGBOk=
 github.com/google/go-tpm v0.9.8 h1:slArAR9Ft+1ybZu0lBwpSmpwhRXaa85hWtMinMyRAWo=
@@ -8,5 +8,5 @@ github.com/google/go-tpm-tools v0.3.13-0.20230620182252-4639ecce2aba h1:qJEJcuLz
 github.com/google/go-tpm-tools v0.3.13-0.20230620182252-4639ecce2aba/go.mod h1:EFYHy8/1y2KfgTAsx7Luu7NGhoxtuVHnNo8jE7FikKc=
 github.com/vphpersson/tpm_signer v0.3.0 h1:VSOPQDPk4fBZt40nzteLo1S+/LHmDX9vEdoVkq38IAA=
 github.com/vphpersson/tpm_signer v0.3.0/go.mod h1:bixR/Eo1tJrsbMIzEaki0BDQlss21bAJUpObVb35u7A=
-golang.org/x/sys v0.49.0 h1:XbzkgYJHdqh/8m2Uu0W/dQv8nktxx4BFHp1M0gROTXA=
-golang.org/x/sys v0.49.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=
+golang.org/x/sys v0.50.0 h1:dkKZEFTEKaLr1sjhs0WiKqoi8Jj5nHbS3Njmx1UoMJs=
+golang.org/x/sys v0.50.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=
