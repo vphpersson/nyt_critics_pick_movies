@@ -15,6 +15,7 @@ import (
 
 	"github.com/altshiftab/authentication_go/pkg/api_key/client"
 	altshiftEnv "github.com/altshiftab/utils_go/pkg/env"
+	altshiftErrors "github.com/altshiftab/utils_go/pkg/errors"
 	httpContextExtractor "github.com/altshiftab/utils_go/pkg/http/types/http_context_extractor"
 	altshiftLog "github.com/altshiftab/utils_go/pkg/log"
 	errorLogger "github.com/altshiftab/utils_go/pkg/log/error_logger"
@@ -47,7 +48,10 @@ func readIntEnv(name string, fallback int) (int, error) {
 		return fallback, nil
 	}
 	parsed, err := strconv.Atoi(value)
-	if err != nil || parsed <= 0 {
+	if err != nil {
+		return 0, altshiftErrors.NewWithTrace(fmt.Errorf("%w: %s: strconv atoi: %w", errInvalidEnv, name, err), value)
+	}
+	if parsed <= 0 {
 		return 0, fmt.Errorf("%w: %s=%q", errInvalidEnv, name, value)
 	}
 	return parsed, nil
@@ -60,7 +64,7 @@ func readBoolEnv(name string) (bool, error) {
 	}
 	parsed, err := strconv.ParseBool(value)
 	if err != nil {
-		return false, fmt.Errorf("%w: %s=%q", errInvalidEnv, name, value)
+		return false, altshiftErrors.NewWithTrace(fmt.Errorf("%w: %s: strconv parse bool: %w", errInvalidEnv, name, err), value)
 	}
 	return parsed, nil
 }
