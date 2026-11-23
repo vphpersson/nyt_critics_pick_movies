@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	altshiftErrors "github.com/altshiftab/utils_go/pkg/errors"
 )
 
 type fixedToken struct{ token string }
@@ -117,6 +120,83 @@ func TestFeedAll(t *testing.T) {
 			want := testCase.feedings
 			if !slices.Equal(got, want) {
 				t.Errorf("feedings %v, want %v", got, want)
+			}
+		})
+	}
+}
+
+func TestFeedOnceErrors(t *testing.T) {
+	t.Parallel()
+
+	const token = "a-secret-token"
+	answering := func(status int, answer string) func(t *testing.T) *url.URL {
+		return func(t *testing.T) *url.URL {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				writer.WriteHeader(status)
+				_, _ = writer.Write([]byte(answer))
+			}))
+			t.Cleanup(server.Close)
+			base, _ := url.Parse(server.URL)
+			return base
+		}
+	}
+	testCases := []struct {
+		name string
+		base func(t *testing.T) *url.URL
+		is   error
+		// input is what the error carries, as text, of the address the server was given.
+		input func(address string) string
+	}{
+		{
+			name:  "a request that cannot be made",
+			base:  func(*testing.T) *url.URL { return &url.URL{Scheme: "http", Host: "bad host"} },
+			input: func(address string) string { return address },
+		},
+		{
+			name: "a feeding that cannot be sent",
+			base: func(*testing.T) *url.URL {
+				server := httptest.NewServer(http.NotFoundHandler())
+				server.Close()
+				base, _ := url.Parse(server.URL)
+				return base
+			},
+			input: func(address string) string { return address },
+		},
+		{
+			name: "a refusal", base: answering(http.StatusUnauthorized, "no"), is: errRefused,
+			input: func(address string) string { return fmt.Sprint([]any{address, http.StatusUnauthorized}) },
+		},
+		{
+			name: "an answer that is not JSON", base: answering(http.StatusOK, "<html>"),
+			input: func(string) string { return "<html>" },
+		},
+		{
+			name: "an answer of too few results", base: answering(http.StatusOK, `{"results":[]}`), is: errRefused,
+			input: func(string) string { return `{"results":[]}` },
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			base := testCase.base(t)
+			_, err := feedOnce(t.Context(), http.DefaultClient, base, &fixedToken{token: token}, &feeding{Feed: "nyt", Picks: newestFirst(1)})
+			if err == nil || testCase.is != nil && !errors.Is(err, testCase.is) {
+				t.Fatalf("err %v", err)
+			}
+			traced, ok := errors.AsType[*altshiftErrors.ExtendedError](err)
+			if !ok || traced.GetStackTrace() == "" {
+				t.Fatalf("no trace: %v", err)
+			}
+			input := fmt.Sprint(traced.GetInput())
+			if answer, isBytes := traced.GetInput().([]byte); isBytes {
+				input = string(answer)
+			}
+			if want := testCase.input(base.JoinPath(feedPath).String()); input != want {
+				t.Errorf("input %q, want %q", input, want)
+			}
+			if strings.Contains(err.Error(), token) || strings.Contains(input, token) {
+				t.Errorf("the token in the error: %v, %q", err, input)
 			}
 		})
 	}

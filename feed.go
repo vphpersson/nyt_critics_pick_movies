@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	altshiftErrors "github.com/altshiftab/utils_go/pkg/errors"
 )
 
 // The films service's feeding of a list, as this job reaches it: vvvp_films' api.Feeding and api.Fed,
@@ -77,33 +79,37 @@ func feedOnce(ctx context.Context, httpClient *http.Client, filmsUrl *url.URL, s
 	if err != nil {
 		return nil, fmt.Errorf("json marshal: %w", err)
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, filmsUrl.JoinPath(feedPath).String(), bytes.NewReader(body))
+	// An error carries the address, the status and the answer, never the request: its header holds the token.
+	address := filmsUrl.JoinPath(feedPath).String()
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, address, bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("http new request: %w", err)
+		return nil, altshiftErrors.NewWithTrace(fmt.Errorf("http new request: %w", err), address)
 	}
 	request.Header.Set("Authorization", "Bearer "+token)
 	request.Header.Set("Content-Type", "application/json")
 	response, err := httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("http do: %w", err)
+		return nil, altshiftErrors.NewWithTrace(fmt.Errorf("http do: %w", err), address)
 	}
 	if response == nil {
-		return nil, fmt.Errorf("%w: no response", errRefused)
+		return nil, altshiftErrors.NewWithTrace(fmt.Errorf("%w: no response", errRefused), address)
 	}
 	defer func() { _ = response.Body.Close() }()
 	answer, err := io.ReadAll(io.LimitReader(response.Body, 1024*1024))
 	if err != nil {
-		return nil, fmt.Errorf("read body: %w", err)
+		return nil, altshiftErrors.NewWithTrace(fmt.Errorf("read body: %w", err), address, response.StatusCode)
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: status %d: %s", errRefused, response.StatusCode, strings.TrimSpace(string(answer)))
+		return nil, altshiftErrors.NewWithTrace(
+			fmt.Errorf("%w: status %d: %s", errRefused, response.StatusCode, strings.TrimSpace(string(answer))), address, response.StatusCode,
+		)
 	}
 	var out fed
 	if err := json.Unmarshal(answer, &out); err != nil {
-		return nil, fmt.Errorf("json unmarshal: %w", err)
+		return nil, altshiftErrors.NewWithTrace(fmt.Errorf("json unmarshal: %w", err), answer)
 	}
 	if len(out.Results) != len(input.Picks) {
-		return nil, fmt.Errorf("%w: %d results of %d picks", errRefused, len(out.Results), len(input.Picks))
+		return nil, altshiftErrors.NewWithTrace(fmt.Errorf("%w: %d results of %d picks", errRefused, len(out.Results), len(input.Picks)), answer)
 	}
 	return &out, nil
 }
