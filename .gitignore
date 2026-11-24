@@ -7,9 +7,6 @@
 !/Makefile
 !/*.go
 
-!/deploy
-!/deploy/**/*
-
 !/cmd
 !/pkg
 
